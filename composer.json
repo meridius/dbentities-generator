@@ -1,0 +1,25 @@
+{
+	"name": "meridius/dbentities-generator",
+	"type": "project",
+	"description": "Generator of database entities for use with Nette Database",
+	"keywords": ["database", "db", "generator", "entity", "nette"],
+	"homepage": "https://github.com/meridius/dbentities-generator",
+	"license": "Apache-2.0",
+	"authors": [
+		{
+			"name": "Martin Lukeš",
+			"homepage": "https://github.com/meridius/dbentities-generator"
+		}
+	],
+	"support": {
+		"issues": "https://github.com/meridius/dbentities-generator/issues"
+	},
+	"require": {
+		"php": ">=5.4.24",
+		"nette/php-generator": "~2.3.0",
+		"meridius/helpers": "^1.0.0"
+	},
+	"require-dev": {
+		"tracy/tracy": "~2.3.0"
+	}
+}
