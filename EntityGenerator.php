@@ -24,9 +24,9 @@ class EntityGenerator extends Object {
 			FileHelper::deleteDir($destDir);
 		}
 		mkdir($destDir);
-		$this->destDir = StringHelper::toCamelCase($destDir);
+		$this->destDir = StringHelper::toPascalCase($destDir);
 		$this->inputFile = $inputSchemafileName;
-		$this->dbName = StringHelper::toCamelCase($dbName);
+		$this->dbName = StringHelper::toPascalCase($dbName);
 	}
 
 	public function generate() {
@@ -179,8 +179,8 @@ class EntityGenerator extends Object {
 	 */
 	private function generateEntityFile(TableEntity $tableEntity) {
 		$fullName = implode(DIRECTORY_SEPARATOR, array(
-			$this->destDir,
-			$this->dbName,
+			StringHelper::toCamelCase($this->destDir),
+			StringHelper::toCamelCase($this->dbName),
 			StringHelper::toPascalCase($tableEntity->tableName) . ".php",
 		));
 		$dirName = dirname($fullName);
