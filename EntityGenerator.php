@@ -9,26 +9,40 @@ use \Nette\PhpGenerator\PhpFile,
 
 class EntityGenerator extends Object {
 
-	private $destDir;
 	private $inputFile;
-	private $dbName;
+	private $generateAbsoluteConstants;
+	private $namespaceRoot;
+	private $namespaceDb;
+	private $destDirRoot;
+	private $destDirDb;
 
 	/**
-	 * 
+	 *
 	 * @param string $inputSchemafileName
-	 * @param string $destDir
-	 * @param string $dbName
+	 * @param string $namespaceRoot What namespace to put generated entities to. Will be used also as destination directory.
+	 * @param string $dbName [optional] Defaults to null. Used as part of namespace and directory for entities.
+	 * @param bool $generateAbsoluteConstants [optional] Defaults to true.<br />
+	 *  This will also generate <b>const __COLUMN_NAME = 'table.column_name';</b><br />
+	 *  Constant name is prefixed with (__) two underscores.
+	 * @param bool $useForce [optional] Defaults to true.<br />
+	 *  Remove destination directory if exists.
 	 */
-	public function __construct($inputSchemafileName, $destDir, $dbName) {
-		if (file_exists($destDir)) {
-			FileHelper::deleteDir($destDir);
-		}
-		mkdir($destDir);
-		$this->destDir = StringHelper::toCamelCase($destDir);
+	public function __construct($inputSchemafileName, $namespaceRoot, $dbName = null, $generateAbsoluteConstants = true, $useForce = true) {
+		$this->namespaceRoot = StringHelper::toPascalCase($namespaceRoot);
+		$this->namespaceDb = StringHelper::toPascalCase($dbName);
+		$this->destDirRoot = $namespaceRoot;
+		$this->destDirDb = $dbName;
 		$this->inputFile = $inputSchemafileName;
-		$this->dbName = StringHelper::toCamelCase($dbName);
+		$this->generateAbsoluteConstants = $generateAbsoluteConstants;
+		if (file_exists($this->destDirRoot) && $useForce) {
+			FileHelper::deleteDir($this->destDirRoot);
+		}
+		mkdir($this->destDirRoot);
 	}
 
+	/**
+	 * Will generate database entities.
+	 */
 	public function generate() {
 		$tableEntities = $this->parseSchema();
 		foreach ($tableEntities as $tableEntity) {
@@ -37,7 +51,7 @@ class EntityGenerator extends Object {
 	}
 
 	/**
-	 * 
+	 *
 	 * @return TableEntity[]
 	 */
 	private function parseSchema() {
@@ -65,38 +79,43 @@ class EntityGenerator extends Object {
 		fclose($handle);
 		return $tableEntities;
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $row
 	 * @return string|bool table name OR false
 	 */
 	private function getTableName($row) {
 		$matches = array();
-		return preg_match("/^.*create table.*`(.*)` \($/i", $row, $matches)
-			? $matches[1]
-			: false;
+		return preg_match("/^\s*create table.*`(.*)` \($/i", $row, $matches) ? $matches[1] : false;
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $row
 	 * @return string|bool column name OR false
 	 */
 	private function getColumnName($row) {
 		return $this->getColumn($row, "name");
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $row
-	 * @return 
+	 * @return string
 	 */
 	private function getColumnAttributes($row) {
 		$attributes = $this->getColumn($row, "attr");
 		return $this->identifyVarType($attributes) . ' ' . $attributes;
 	}
-	
+
+	/**
+	 * 
+	 * @param string $row
+	 * @param string $resultType
+	 * @return boolean|array
+	 * @throws \Exception
+	 */
 	private function getColumn($row, $resultType) {
 		$matches = array();
 		if (preg_match("/^\s*`(\w*)`\s+(.*)$/i", $row, $matches)) {
@@ -112,9 +131,9 @@ class EntityGenerator extends Object {
 			return false;
 		}
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $columnAttributes
 	 * @return string
 	 */
@@ -163,53 +182,53 @@ class EntityGenerator extends Object {
 			}
 		}
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $row
 	 * @return bool
 	 */
 	private function isTableEnd($row) {
 		return preg_match("/^.*;$/", $row);
 	}
-
+	
 	/**
-	 * 
+	 *
 	 * @param \App\TableEntity $tableEntity
 	 */
 	private function generateEntityFile(TableEntity $tableEntity) {
-		$fullName = implode(DIRECTORY_SEPARATOR, array(
-			$this->destDir,
-			$this->dbName,
-			StringHelper::toPascalCase($tableEntity->tableName) . ".php",
-		));
-		$dirName = dirname($fullName);
-		if (!is_dir($dirName)) {
-			mkdir($dirName, 0777, true);
-		}
-		touch($fullName);
 		$phpFile = new PhpFile();
-		$namespace = $phpFile->addNamespace($this->destDir . "\\" . $this->dbName);
+		$namespaceName = empty($this->namespaceDb) ? $this->namespaceRoot : $this->namespaceRoot . '\\' . $this->namespaceDb;
+		$namespace = $phpFile->addNamespace($namespaceName);
 		$class = $namespace->addClass(StringHelper::toPascalCase($tableEntity->tableName));
-		$class->addExtend("\\" . $this->destDir . "\\AbstractDBEntity");
-		
+		$class->addExtend("\\" . $this->namespaceRoot . "\\AbstractDBEntity");
+
 		$mGetTableName = $class->addMethod("getTableName");
 		$mGetTableName
 			->addDocument("@return string")
 			->setVisibility("public")
 			->setStatic(true)
 			->addBody("return '$tableEntity->tableName';");
-		
-		$mappingBody = array();
+
 		foreach ($tableEntity->columns as $name => $attributes) {
 			$class->addConst(StringHelper::toConstCase($name), $name);
+		}
+
+		if ($this->generateAbsoluteConstants) {
+			foreach ($tableEntity->columns as $name => $attributes) {
+				$class->addConst('__' . StringHelper::toConstCase($name), $tableEntity->tableName . '.' . $name);
+			}
+		}
+
+		$mappingBody = array();
+		foreach ($tableEntity->columns as $name => $attributes) {
 			$prop = $class->addProperty(StringHelper::toCamelCase($name));
 			$prop
 				->addDocument("@var $attributes")
 				->setVisibility("public");
 			$mappingBody[] = "\tself::" . StringHelper::toConstCase($name) . ' => &$this->' . StringHelper::toCamelCase($name) . ",";
 		}
-		
+
 		$mGetMappingArray = $class->addMethod("getMappingArray");
 		$mGetMappingArray
 			->addDocument("@return array")
@@ -219,7 +238,24 @@ class EntityGenerator extends Object {
 				. implode("\n", $mappingBody) . "\n"
 				. ');'
 		);
-		file_put_contents($fullName, (string) $phpFile);
+		$this->writeFile($phpFile, $tableEntity->tableName);
+	}
+
+	/**
+	 * 
+	 * @param PhpFile $content
+	 * @param string $tableName
+	 */
+	private function writeFile(PhpFile $content, $tableName) {
+		$fileName = StringHelper::toPascalCase($tableName) . ".php";
+		$dirName = empty($this->destDirDb) ? '' : $this->destDirDb . DIRECTORY_SEPARATOR;
+		$fullFileName = $this->destDirRoot . DIRECTORY_SEPARATOR . $dirName . $fileName;
+		$fullDirName = dirname($fullFileName);
+		if (!is_dir($fullDirName)) {
+			mkdir($fullDirName, 0777, true);
+		}
+		touch($fullFileName);
+		file_put_contents($fullFileName, (string) $content);
 	}
 
 }
@@ -228,7 +264,7 @@ class TableEntity extends Object {
 
 	public $tableName;
 
-	/** @var array columnName => [column attributes] */
+	/** @var string[] columnName => columnAttributes */
 	public $columns = array();
-	
+
 }
