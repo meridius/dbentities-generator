@@ -17,6 +17,7 @@
 	"require": {
 		"php": ">=5.4.24",
 		"nette/php-generator": "~2.3.0",
+		"nette/tester": "^1.4.0",
 		"meridius/helpers": "^1.0.0"
 	},
 	"require-dev": {
