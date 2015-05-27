@@ -16,6 +16,7 @@ class EntityGenerator extends Object {
 	private $destDirRoot;
 	private $destDirDb;
 	private $enquoteNames;
+	private $abstractEntityFileName;
 
 	/**
 	 *
@@ -49,6 +50,7 @@ class EntityGenerator extends Object {
 			FileHelper::deleteDir($this->destDirRoot);
 		}
 		mkdir($this->destDirRoot);
+		$this->copyAbstractEntity();
 	}
 
 	/**
@@ -89,6 +91,15 @@ class EntityGenerator extends Object {
 		}
 		fclose($handle);
 		return $tableEntities;
+	}
+	
+	private function copyAbstractEntity() {
+		$this->abstractEntityFileName = __DIR__ . DIRECTORY_SEPARATOR . 'AbstractDBEntity.php';
+		$filename = $this->destDirRoot . DIRECTORY_SEPARATOR . basename($this->abstractEntityFileName);
+		touch($filename);
+		$content = file_get_contents($this->abstractEntityFileName);
+		$contentChanged = preg_replace("/namespace \w*;/m", "namespace $this->namespaceRoot;", $content);
+		file_put_contents($filename, $contentChanged);
 	}
 	
 	/**
