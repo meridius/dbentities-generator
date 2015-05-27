@@ -27,6 +27,7 @@ class CliRunner {
 			$this->options['-n'], 
 			$this->options['-d'], 
 			$this->options['-a'], 
+			$this->options['-e'], 
 			$this->options['-f']
 		);
 		
@@ -56,6 +57,9 @@ Options:
                             const __COLUMN_NAME = 'table.column_name';
                           Constant name is prefixed with (__) two underscores.
                             [optional] (default: true)
+    -e                    Enquote table and column names. This will generate: 
+                            const __COLUMN_NAME = '`table`.`column_name`';
+                            [optional] (default: false)
     -f                    Remove destination directory if exists - use force.
                             [optional] (default: true)
     -h | --help           This help.
@@ -66,6 +70,7 @@ XX
 			'-n' => array(CommandLine::VALUE => 'DbEntity'),
 			'-d' => array(CommandLine::OPTIONAL => TRUE, CommandLine::VALUE => ''),
 			'-a' => array(CommandLine::OPTIONAL => TRUE, CommandLine::VALUE => TRUE),
+			'-e' => array(CommandLine::OPTIONAL => TRUE, CommandLine::VALUE => FALSE),
 			'-f' => array(CommandLine::OPTIONAL => TRUE, CommandLine::VALUE => TRUE),
 		));
 

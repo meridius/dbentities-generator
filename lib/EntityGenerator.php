@@ -15,6 +15,7 @@ class EntityGenerator extends Object {
 	private $namespaceDb;
 	private $destDirRoot;
 	private $destDirDb;
+	private $enquoteNames;
 
 	/**
 	 *
@@ -24,16 +25,26 @@ class EntityGenerator extends Object {
 	 * @param bool $generateAbsoluteConstants [optional] Defaults to true.<br />
 	 *  This will also generate <b>const __COLUMN_NAME = 'table.column_name';</b><br />
 	 *  Constant name is prefixed with (__) two underscores.
+	 * @param bool $enquoteNames [optional] Defaults to false.<br />
+	 *  This will enquote table and column names: <b>const __COLUMN_NAME = '`table`.`column_name`';</b>
 	 * @param bool $useForce [optional] Defaults to true.<br />
 	 *  Remove destination directory if exists.
 	 */
-	public function __construct($inputSchemafileName, $namespaceRoot, $dbName = null, $generateAbsoluteConstants = true, $useForce = true) {
+	public function __construct(
+		$inputSchemafileName, 
+		$namespaceRoot, 
+		$dbName = null, 
+		$generateAbsoluteConstants = true, 
+		$enquoteNames = false,
+		$useForce = true
+	) {
 		$this->namespaceRoot = StringHelper::toPascalCase($namespaceRoot);
 		$this->namespaceDb = StringHelper::toPascalCase($dbName);
 		$this->destDirRoot = $namespaceRoot;
 		$this->destDirDb = $dbName;
 		$this->inputFile = $inputSchemafileName;
 		$this->generateAbsoluteConstants = $generateAbsoluteConstants;
+		$this->enquoteNames = $enquoteNames;
 		if (file_exists($this->destDirRoot) && $useForce) {
 			FileHelper::deleteDir($this->destDirRoot);
 		}
@@ -78,6 +89,15 @@ class EntityGenerator extends Object {
 		}
 		fclose($handle);
 		return $tableEntities;
+	}
+	
+	/**
+	 * 
+	 * @param string $name
+	 * @return string
+	 */
+	private function getName($name) {
+		return $this->enquoteNames ? "`$name`" : $name;
 	}
 
 	/**
@@ -208,15 +228,15 @@ class EntityGenerator extends Object {
 			->addDocument("@return string")
 			->setVisibility("public")
 			->setStatic(true)
-			->addBody("return '$tableEntity->tableName';");
+			->addBody("return '" . $this->getName($tableEntity->tableName) . "';");
 
 		foreach ($tableEntity->columns as $name => $attributes) {
-			$class->addConst(StringHelper::toConstCase($name), $name);
+			$class->addConst(StringHelper::toConstCase($name), $this->getName($name));
 		}
 
 		if ($this->generateAbsoluteConstants) {
 			foreach ($tableEntity->columns as $name => $attributes) {
-				$class->addConst('__' . StringHelper::toConstCase($name), $tableEntity->tableName . '.' . $name);
+				$class->addConst('__' . StringHelper::toConstCase($name), $this->getName($tableEntity->tableName) . '.' . $this->getName($name));
 			}
 		}
 
