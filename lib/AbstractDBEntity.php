@@ -24,9 +24,8 @@ abstract class AbstractDBEntity extends \Nette\Object implements IDBEntity {
 	 */
 	public function loadFromActiveRow(ActiveRow $row) {
 		$referenceVar = $this->getReferenceArray();
-		$rowArr = $row->toArray();
 		foreach ($referenceVar as $column => &$varRef) {
-			if (array_key_exists($column, $rowArr)) {
+			if ($row->offsetExists($column)) {
 				$varRef = $row[$column];
 			}
 		}
